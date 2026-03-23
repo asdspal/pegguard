@@ -99,3 +99,84 @@ describe("PegGuardPool - deposit()", function () {
     ).to.be.revertedWith("Pool not open");
   });
 });
+
+describe("PegGuardPool - purchaseCoverage()", function () {
+  async function deployFixture() {
+    const [owner, buyer1, buyer2] = await ethers.getSigners();
+    const MockPegGuard = await ethers.getContractFactory("MockPegGuard");
+    const PegGuardPool = await ethers.getContractFactory("PegGuardPool");
+
+    const mockPegGuard = await MockPegGuard.deploy();
+    await mockPegGuard.waitForDeployment();
+
+    const pool = await PegGuardPool.deploy(mockPegGuard.target);
+    await pool.waitForDeployment();
+
+    return { owner, buyer1, buyer2, pool, mockPegGuard };
+  }
+
+  it("buyer can purchase coverage during OPEN state", async function () {
+    const { pool, buyer1 } = await deployFixture();
+
+    await expect(
+      pool.connect(buyer1).purchaseCoverage({ value: ethers.parseEther("1.0") })
+    ).to.not.be.reverted;
+  });
+
+  it("records coverageAmounts correctly", async function () {
+    const { pool, buyer1 } = await deployFixture();
+    const amount = ethers.parseEther("0.75");
+
+    await pool.connect(buyer1).purchaseCoverage({ value: amount });
+    expect(await pool.coverageAmounts(buyer1.address)).to.equal(amount);
+  });
+
+  it("records premiumsPaid correctly", async function () {
+    const { pool, buyer1 } = await deployFixture();
+    const amount = ethers.parseEther("0.33");
+
+    await pool.connect(buyer1).purchaseCoverage({ value: amount });
+    expect(await pool.premiumsPaid(buyer1.address)).to.equal(amount);
+  });
+
+  it("updates totalPremiums correctly", async function () {
+    const { pool, buyer1 } = await deployFixture();
+    const amount = ethers.parseEther("1.2");
+
+    await pool.connect(buyer1).purchaseCoverage({ value: amount });
+    expect(await pool.totalPremiums()).to.equal(amount);
+  });
+
+  it("multiple buyers can purchase independently", async function () {
+    const { pool, buyer1, buyer2 } = await deployFixture();
+    const amount1 = ethers.parseEther("1.1");
+    const amount2 = ethers.parseEther("0.4");
+
+    await pool.connect(buyer1).purchaseCoverage({ value: amount1 });
+    await pool.connect(buyer2).purchaseCoverage({ value: amount2 });
+
+    expect(await pool.coverageAmounts(buyer1.address)).to.equal(amount1);
+    expect(await pool.coverageAmounts(buyer2.address)).to.equal(amount2);
+    expect(await pool.premiumsPaid(buyer1.address)).to.equal(amount1);
+    expect(await pool.premiumsPaid(buyer2.address)).to.equal(amount2);
+    expect(await pool.totalPremiums()).to.equal(amount1 + amount2);
+  });
+
+  it("reverts if msg.value is 0", async function () {
+    const { pool, buyer1 } = await deployFixture();
+
+    await expect(pool.connect(buyer1).purchaseCoverage({ value: 0 })).to.be.revertedWith(
+      "Must pay premium > 0"
+    );
+  });
+
+  it("reverts if state is not OPEN", async function () {
+    const { pool, buyer1, mockPegGuard } = await deployFixture();
+
+    await mockPegGuard.setState(1);
+
+    await expect(
+      pool.connect(buyer1).purchaseCoverage({ value: ethers.parseEther("0.1") })
+    ).to.be.revertedWith("Pool not open");
+  });
+});

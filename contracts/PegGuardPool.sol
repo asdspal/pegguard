@@ -24,4 +24,19 @@ contract PegGuardPool is ReentrancyGuard {
         lpStakes[msg.sender] += msg.value;
         totalStaked += msg.value;
     }
+
+    /**
+     * @notice Purchases coverage by paying an rBTC premium while the pool is OPEN.
+     * @dev MVP simplification: coverage is 1:1 with premium paid. Both
+     * `coverageAmounts` and `premiumsPaid` are stored separately by design so they
+     * can diverge in a post-MVP model that applies a coverage multiplier.
+     */
+    function purchaseCoverage() external payable {
+        require(IPegGuard(pegGuard).getState() == 0, "Pool not open");
+        require(msg.value > 0, "Must pay premium > 0");
+
+        coverageAmounts[msg.sender] += msg.value;
+        premiumsPaid[msg.sender] += msg.value;
+        totalPremiums += msg.value;
+    }
 }
