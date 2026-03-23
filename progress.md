@@ -42,3 +42,21 @@
 - `npx hardhat test test/MockOracle.test.js test/PegGuard.test.js` ✅
 - `npx hardhat test test/PegGuardPool.test.js` ✅
 - Current passing tests: 33/33 (`MockOracle` + `PegGuard` + `PegGuardPool`)
+
+## Milestone 3: Integration Flows
+
+### Step M3.1: Happy Path — Clean Resolution, LP Withdraws — COMPLETED
+- Added shared deployment helper: `test/helpers/setup.js`
+  - Deploy order uses circular-dependency workaround: temporary `PegGuardPool(ZeroAddress)` → `PegGuard` → final `PegGuardPool(pegGuard)`
+- Added full lifecycle integration test suite: `test/integration/happyPath.test.js`
+  - Flow covered: `deposit()` → `purchaseCoverage()` → `activate()` → `resolve()` → `withdraw()` → `claimPayout()` revert (no breach)
+  - Time travel uses `evm_increaseTime` + `evm_mine` for both start and end window transitions
+- Assertions included:
+  - state transition to `ACTIVE` then `RESOLVED`
+  - `breachConfirmed == false` on clean resolution path
+  - LP withdraw event and numerical balance delta equals `stake + pro-rata premium`
+  - buyer `claimPayout()` reverts with `No breach confirmed`
+
+## Verification Snapshot (Updated)
+- `npx hardhat test test/integration/happyPath.test.js` ✅ (7 passing)
+- `npx hardhat test` ✅ (62 passing, 0 failing)
