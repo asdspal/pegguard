@@ -1,0 +1,15 @@
+.env
+.env.local
+
+artifacts/
+cache/
+typechain-types/
+
+node_modules/
+
+deployments/mainnet.json
+progress.md
+memory-bank/
+
+.DS_Store
+Thumbs.db
