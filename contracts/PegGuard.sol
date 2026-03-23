@@ -21,6 +21,13 @@ contract PegGuard {
     bool public breachConfirmed;
     uint256 private _disputeDuration;
 
+    event CoverageActivated(uint256 start, uint256 end, uint256 poolSize);
+
+    modifier inState(State _state) {
+        require(state == _state, "Invalid state");
+        _;
+    }
+
     constructor(
         address _oracle,
         address _pool,
@@ -40,5 +47,12 @@ contract PegGuard {
 
     function getState() external view returns (State) {
         return state;
+    }
+
+    function activate() external inState(State.OPEN) {
+        require(block.timestamp >= coverageStart, "Coverage not started");
+
+        state = State.ACTIVE;
+        emit CoverageActivated(coverageStart, coverageEnd, pool.totalStaked());
     }
 }
