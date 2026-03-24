@@ -60,3 +60,23 @@
 ## Verification Snapshot (Updated)
 - `npx hardhat test test/integration/happyPath.test.js` ✅ (7 passing)
 - `npx hardhat test` ✅ (62 passing, 0 failing)
+
+### Step M3.3: Edge Cases — Expired Window, Double Claim, Unauthorized Breach — COMPLETED
+- Added edge-case integration suite: `test/integration/edgeCases.test.js`
+  - Covered all Phase 3 scenarios from Blueprint Section 6:
+    - expired coverage + no breach → `claimPayout()` reverts with `No breach confirmed`
+    - double-claim attempt → second `claimPayout()` reverts with `Already claimed`
+    - unauthorized `reportBreach()` caller → reverts with `Not oracle`
+    - `resolve()` before time guard checked from both states:
+      - ACTIVE path reverts with `Coverage not ended`
+      - DISPUTED path reverts with `Dispute not ended`
+    - `claimPayout()` from address with no purchased coverage → reverts with `No coverage`
+- Added explicit post-revert assertions to verify no unintended state mutation for key storage:
+  - `coverageAmounts`, `hasClaimed`, `breachConfirmed`, `state`
+
+## Verification Snapshot (Final)
+- `npx hardhat test test/integration/edgeCases.test.js` ✅ (5 passing)
+- `npx hardhat test` ✅ (75 passing, 0 failing)
+- `npx hardhat coverage` ✅
+  - `PegGuard.sol`: 100% statements, 100% branches, 100% functions, 100% lines
+  - `PegGuardPool.sol`: 100% statements, 90% branches, 100% functions, 100% lines
