@@ -1,0 +1,16 @@
+{
+  "network": "rskTestnet",
+  "chainId": 31,
+  "deployedAt": "2026-03-28T15:54:05.589Z",
+  "deployer": "0x8513A856a88e63374286d0116C192733444894C0",
+  "contracts": {
+    "MockOracle": "0x66a9107924C60123f6F9AC36d7c1358f604ef4e8",
+    "PegGuardPool": "0x3bFFc23662B391FbDc3a645d78C14C7e0876a4EF",
+    "PegGuard": "0xb9ae9EB39CBA9b88fAa7e3211815491e8932FBfb"
+  },
+  "config": {
+    "coverageStart": 1774713163,
+    "coverageEnd": 1774713193,
+    "disputeDuration": 10
+  }
+}

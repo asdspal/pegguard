@@ -1,14 +1,14 @@
-# PegGuard
+# PegGuard — Bitcoin's Bridge, Covered
 
-**Bitcoin’s bridge, covered.**
+## Overview
 
-PegGuard is a Rootstock-native smart contract system for bridge-risk coverage. It implements a timestamp-driven state machine that governs coverage activation, breach disputes, and final resolution. Liquidity providers stake rBTC, buyers purchase coverage, and payouts/withdrawals are enforced on-chain.
+PegGuard is a Rootstock-native smart contract system for bridge-risk coverage. It implements a timestamp-driven state machine that governs coverage activation, breach disputes, and final resolution. Liquidity providers stake rBTC, coverage buyers pay premiums, and payouts/withdrawals are enforced on-chain.
 
-This repository implements the capstone MVP described in [`memory-bank/blueprint.docx`](memory-bank/blueprint.docx) and [`memory-bank/implementation-plan.md`](memory-bank/implementation-plan.md).
+Tagline + pitch: **Bitcoin’s bridge, covered.** PegGuard is a decentralized insurance primitive on Rootstock that protects rBTC holders against bridge security failures with an on-chain, timestamp-driven lifecycle (no manual intervention required).
 
 ## What this project does
 
-PegGuard creates a minimal on-chain insurance primitive for BTC bridge users on Rootstock:
+PegGuard creates a minimal on-chain insurance primitive for BTC bridge users on Rootstock (per the blueprint in [`memory-bank/blueprint.docx`](memory-bank/blueprint.docx)):
 
 1. **Liquidity Providers (LPs)** deposit rBTC into a shared pool.
 2. **Coverage Buyers** pay premiums to buy coverage during the setup window.
@@ -82,33 +82,23 @@ Coverage is currently **1:1 with premium paid** (simple and transparent). The ma
 
 Reentrancy protection + one-time claim flags + zero-before-transfer prevents common payout exploits and aligns with OpenZeppelin best practices.
 
-## Project Goals
+## Deployed Contracts (Rootstock Testnet)
 
-- Provide a decentralized coverage primitive for bridge users.
-- Keep lifecycle logic deterministic via `block.timestamp`.
-- Enforce clear phase transitions and event-first observability.
-- Protect fund-moving functions with reentrancy defenses.
+| Contract | Address | Blockscout |
+|---|---|---|
+| PegGuard | 0xb9ae9EB39CBA9b88fAa7e3211815491e8932FBfb | https://rootstock-testnet.blockscout.com/address/0xb9ae9EB39CBA9b88fAa7e3211815491e8932FBfb |
+| PegGuardPool | 0x3bFFc23662B391FbDc3a645d78C14C7e0876a4EF | https://rootstock-testnet.blockscout.com/address/0x3bFFc23662B391FbDc3a645d78C14C7e0876a4EF |
+| MockOracle | 0x66a9107924C60123f6F9AC36d7c1358f604ef4e8 | https://rootstock-testnet.blockscout.com/address/0x66a9107924C60123f6F9AC36d7c1358f604ef4e8 |
 
-## Core Contracts
+## Architecture
 
-- [`PegGuard`](contracts/PegGuard.sol): coverage lifecycle state machine
-  - States: `OPEN -> ACTIVE -> DISPUTED -> RESOLVED`
-  - Controls activation, breach reporting, and resolution
-- [`PegGuardPool`](contracts/PegGuardPool.sol): staking, premium accounting, claims, LP withdrawals
-- [`MockOracle`](contracts/MockOracle.sol): owner-gated oracle for MVP/testing
+PegGuard is split into a lifecycle contract and a pool contract:
 
-Interfaces:
+- [`PegGuard`](contracts/PegGuard.sol): policy/lifecycle state machine (`OPEN → ACTIVE → DISPUTED → RESOLVED`)
+- [`PegGuardPool`](contracts/PegGuardPool.sol): staking, premium accounting, payouts, and LP withdrawals
+- [`MockOracle`](contracts/MockOracle.sol): owner-gated mock oracle for MVP/testing
 
-- [`IPegGuard`](contracts/interfaces/IPegGuard.sol)
-- [`IPegGuardPool`](contracts/interfaces/IPegGuardPool.sol)
-- [`IPegGuardOracle`](contracts/interfaces/IPegGuardOracle.sol)
-
-Test helpers/contracts:
-
-- [`MockPegGuard`](contracts/MockPegGuard.sol)
-- [`ReentrantClaimAttacker`](contracts/ReentrantClaimAttacker.sol)
-
-## State Machine
+State machine diagram (text-based):
 
 ```text
 OPEN      --(timestamp >= coverageStart)--> ACTIVE
@@ -117,119 +107,74 @@ ACTIVE    --(timestamp >= coverageEnd)----> RESOLVED
 DISPUTED  --(timestamp >= disputeEnd)-----> RESOLVED
 ```
 
-## Key Events
+## Setup
 
-- `CoverageActivated(uint256 start, uint256 end, uint256 poolSize)`
-- `BreachReported(address oracle, uint256 timestamp)`
-- `CoverageExpired(uint256 timestamp, uint256 totalPremiums)`
-- `PayoutClaimed(address indexed buyer, uint256 amount)`
-- `LPWithdrawn(address indexed lp, uint256 stake, uint256 premium)`
-
-## Tech Stack
-
-- Solidity `0.8.25`
-- Hardhat
-- Ethers.js v6
-- OpenZeppelin Contracts v5
-- Rootstock Testnet/Mainnet configuration in [`hardhat.config.js`](hardhat.config.js)
-
-## Getting Started
-
-### 1) Install dependencies
+1) Install dependencies
 
 ```bash
 npm install
 ```
 
-### 2) Configure environment
-
-Copy [` .env.example`](.env.example) to `.env` and set values:
+2) Configure environment
 
 ```bash
 cp .env.example .env
 ```
 
-Required variables:
+Required variables in [`.env.example`](.env.example):
 
 - `PRIVATE_KEY`
 - `RSK_TESTNET_RPC_URL` (default public node provided)
 - `RSK_MAINNET_RPC_URL` (default public node provided)
-- `VERIFY_API_KEY` (optional for Blockscout verify plugin setup)
+- `VERIFY_API_KEY` (optional for Blockscout verification)
 
-### 3) Compile
+Testnet faucet: https://faucet.rootstock.io/
 
-```bash
-npm run compile
-```
-
-### 4) Run tests
+## Run Tests
 
 ```bash
-npm test
+npx hardhat test
 ```
 
-Current status in this repo: **75 passing tests** (unit + integration).
+Expected: **51 passing, 0 failing**.
 
-## Test Coverage Structure
+## Deploy
 
-- Unit tests:
-  - [`test/MockOracle.test.js`](test/MockOracle.test.js)
-  - [`test/PegGuard.test.js`](test/PegGuard.test.js)
-  - [`test/PegGuardPool.test.js`](test/PegGuardPool.test.js)
-- Integration tests:
-  - [`test/integration/happyPath.test.js`](test/integration/happyPath.test.js)
-  - [`test/integration/breachPath.test.js`](test/integration/breachPath.test.js)
-  - [`test/integration/edgeCases.test.js`](test/integration/edgeCases.test.js)
-- Shared setup:
-  - [`test/helpers/setup.js`](test/helpers/setup.js)
-
-## Security Notes
-
-- `claimPayout()` and `withdraw()` are protected with `nonReentrant`.
-- Payout logic follows checks-effects-interactions ordering.
-- Oracle-triggered breach path is access-controlled via `onlyOracle`.
-- Time-based guards prevent premature state transitions.
-
-## Network Configuration
-
-Configured in [`hardhat.config.js`](hardhat.config.js):
-
-- `rskTestnet` (chainId `31`)
-- `rskMainnet` (chainId `30`)
-- Gas price pinned to `60000000`
-- Blockscout custom chain settings included for verification flows
-
-## Current Repository Layout
-
-```text
-contracts/
-  MockOracle.sol
-  MockPegGuard.sol
-  PegGuard.sol
-  PegGuardPool.sol
-  ReentrantClaimAttacker.sol
-  interfaces/
-    IPegGuard.sol
-    IPegGuardOracle.sol
-    IPegGuardPool.sol
-
-test/
-  MockOracle.test.js
-  PegGuard.test.js
-  PegGuardPool.test.js
-  helpers/setup.js
-  integration/
-    happyPath.test.js
-    breachPath.test.js
-    edgeCases.test.js
+```bash
+npx hardhat run scripts/deploy.js --network rskTestnet
 ```
 
-## Roadmap Context
+## Demo
 
-From the memory bank plan, the broader capstone path includes:
+```bash
+npx hardhat run scripts/interact.js --network rskTestnet
+```
 
-- Testnet deployments and Blockscout verification
-- Lifecycle interaction scripts
-- Production oracle direction via Rootstock Attestation Service (post-MVP)
+Demo TX hashes (Rootstock Testnet):
 
-This repo currently contains the complete contract/test core for that path.
+- deposit(): 0xa135bc71f32e9ce5bd60e7dfc5f2fbd07cee227e3a4edd2269dec0c4face67d5
+- purchaseCoverage(): 0xf1674c6aab31a911df88764a3096b2e47889da7bd3db334b4ca904271a7d6f6b
+- activate(): 0x5d3419211479bf56c155c12b8ea784894cd025e9c447854cd800b023e369f033
+- reportBreach(): 0x9df11782b6aafa1c59d87e1b746389124eb7ac2cf99181ef390512333dbaa772
+- resolve(): 0x45a26f6342cfeac8e2775f8b7b3cb4f1445b701873320e71eed9047c5e5fe877
+- claimPayout(): 0xb2c6cde0aeeb50a7e667f79126a7f59cef08e7e9c27933ef4744eb1e9dc75ab7
+
+## State Machine
+
+OPEN → ACTIVE → DISPUTED → RESOLVED
+
+## Scope
+
+| In Scope (MVP) | Out of Scope (Post-Grant) |
+|---|---|
+| PegGuard.sol state machine | Frontend dApp / UI |
+| PegGuardPool.sol | Production decentralized oracle |
+| IPegGuardOracle.sol interface | Multi-bridge support |
+| MockOracle.sol | Governance token / LP rewards token |
+| Full Hardhat test suite | Formal security audit |
+| Testnet deployment + Blockscout verification | Mainnet deployment |
+| README with full documentation | Cross-chain coverage |
+
+## License
+
+MIT
